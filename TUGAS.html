@@ -191,7 +191,7 @@
                                 <a href="https://en.wikipedia.org/wiki/Resident_Evil_Requiem"
                                     class="gallery-item d-block" target="_blank">
                                     <img src="assets/requiem.jfif" class="w-100 rounded shadow-sm"
-                                        alt="Red Dead Redemption" title="Learn more">
+                                        alt="Requiem" title="Learn more">
                                 </a>
                             </div>
                             <div class="col-sm-6 col-lg-6">
@@ -209,6 +209,22 @@
                                 </a>
                             </div>
                         </div>
+                    </section>
+
+                    <section id="outbreak-monitor" class="p-4 p-md-5 rounded shadow mb-5"
+                        style="background-color: var(--secondary);">
+                        <div class="d-flex align-items-center gap-3 mb-1">
+                            <span class="spinner-grow spinner-grow-sm text-danger flex-shrink-0" role="status"></span>
+                            <h2 class="mb-0 text-uppercase fw-bold"
+                                style="letter-spacing: 2px; color: var(--accent); font-size: 1rem;">
+                                Umbrella Outbreak Monitor
+                            </h2>
+                        </div>
+                        <p class="text-smoke small mb-4" style="padding-left: 28px;">
+                            Live satellite feed — global infection status
+                        </p>
+
+                        <div id="api-outbreak-container" class="row g-3"></div>
                     </section>
 
                     <!-- Video Section -->
@@ -256,6 +272,63 @@
 
         <!-- Javascript Bawaan -->
         <script>
+            const THREAT_LEVELS = [
+                { label: 'Critical', color: '#D62828', bg: 'rgba(214,40,40,0.12)', border: 'rgba(214,40,40,0.3)', min: 75 },
+                { label: 'High', color: '#D67820', bg: 'rgba(214,120,40,0.12)', border: 'rgba(214,120,40,0.3)', min: 45 },
+                { label: 'Moderate', color: '#b8a020', bg: 'rgba(200,180,40,0.1)', border: 'rgba(200,180,40,0.25)', min: 0 },
+            ];
+
+            async function fetchOutbreakData() {
+                const container = document.getElementById('api-outbreak-container');
+                container.innerHTML = `<div class="text-center w-100 py-4">
+        <div class="spinner-border text-danger" role="status"></div>
+        <p class="mt-2 small text-smoke">Scanning global sectors...</p>
+    </div>`;
+                try {
+                    const res = await fetch('https://restcountries.com/v3.1/alpha?codes=usa,esp,chn,rus,zaf,rou&fields=name,flags,population');
+                    if (!res.ok) throw new Error('Signal lost');
+                    const countries = await res.json();
+                    container.innerHTML = '';
+                    countries.forEach(c => {
+                        const pct = 20 + (c.population % 97);
+                        const level = THREAT_LEVELS.find(t => pct >= t.min) || THREAT_LEVELS[2];
+                        const pop = c.population >= 1e6
+                            ? (c.population / 1e6).toFixed(1) + 'M'
+                            : (c.population / 1e3).toFixed(0) + 'K';
+                        container.innerHTML += `
+            <div class="col-6 col-md-4">
+                <div class="card h-100 border-0 rounded-3 overflow-hidden" style="background:#0f0f0f; border:1px solid #3a3a3a !important; transition: transform .25s, border-color .25s;"
+                    onmouseenter="this.style.transform='translateY(-3px)';this.style.borderColor='var(--accent)';"
+                    onmouseleave="this.style.transform='';this.style.borderColor='#3a3a3a';">
+                    <div class="d-flex align-items-center justify-content-center p-2" style="height:70px; background:#1a1919;">
+                        <img src="${c.flags.svg}" alt="${c.name.common}" style="max-height:100%; max-width:100%; object-fit:contain; border-radius:3px;">
+                    </div>
+                    <div class="p-3">
+                        <div class="fw-bold mb-2" style="font-size:0.7rem; letter-spacing:1px; text-transform:uppercase;">${c.name.common}</div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span style="font-size:0.65rem; color:#8C8C8C;">Infection index</span>
+                            <span style="font-size:0.65rem; font-weight:700; color:var(--accent);">${pct}%</span>
+                        </div>
+                        <div class="rounded-pill mb-2" style="height:3px; background:#2B2B2B;">
+                            <div class="rounded-pill" style="height:100%; width:${pct}%; background:var(--accent);"></div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span style="font-size:0.65rem; color:#8C8C8C;">Pop: ${pop}</span>
+                            <span class="rounded-pill px-2 py-1" style="font-size:0.6rem; font-weight:700; letter-spacing:0.8px; color:${level.color}; background:${level.bg}; border:1px solid ${level.border};">${level.label}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+                    });
+                } catch (e) {
+                    container.innerHTML = `<div class="text-center text-danger p-3 w-100">
+            <p class="small">Signal interrupted: ${e.message}</p>
+            <button class="btn btn-sm btn-outline-danger" onclick="fetchOutbreakData()">Retry scan</button>
+        </div>`;
+                }
+            }
+
+            fetchOutbreakData(); // ← this was the original bug fix too
             // Navbar scroll effect
             const navbar = document.querySelector('.navbar');
             window.addEventListener('scroll', () => {
